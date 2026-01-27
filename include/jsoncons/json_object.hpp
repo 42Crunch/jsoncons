@@ -182,14 +182,22 @@ namespace jsoncons {
             return false;
         }
 
-        friend bool operator<=(const key_value& lhs, const key_value& rhs) noexcept
-        {
-            return !(rhs < lhs);
-        }
-
         friend bool operator>(const key_value& lhs, const key_value& rhs) noexcept
         {
-            return !(lhs <= rhs);
+            if (lhs.key_ > rhs.key_)
+            {
+                return true;
+            }
+            if (lhs.key_ == rhs.key_ && lhs.value_ > rhs.value_)
+            {
+                return true;
+            }
+            return false;
+        }
+
+        friend bool operator<=(const key_value& lhs, const key_value& rhs) noexcept
+        {
+            return !(rhs > lhs);
         }
 
         friend bool operator>=(const key_value& lhs, const key_value& rhs) noexcept
