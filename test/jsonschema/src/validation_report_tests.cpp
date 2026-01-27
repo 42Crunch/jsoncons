@@ -11,7 +11,6 @@
 
 #include <fstream>
 #include <iostream>
-#include <regex>
 #include <catch/catch.hpp>
 
 using jsoncons::json;

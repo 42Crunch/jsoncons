@@ -31,10 +31,7 @@
 #include <jsoncons_ext/jsonschema/common/format.hpp>
 #include <jsoncons_ext/jsonschema/common/uri_wrapper.hpp>
 #include <jsoncons_ext/jsonschema/common/validator.hpp>
-
-#if defined(JSONCONS_HAS_STD_REGEX)
-#include <regex>
-#endif
+#include <jsoncons_ext/jsonschema/common/regex.hpp>
 
 namespace jsoncons {
 namespace jsonschema {
@@ -616,7 +613,7 @@ namespace jsonschema {
 
     // pattern 
 
-#if defined(JSONCONS_HAS_STD_REGEX)
+#if defined(JSONCONS_JSONSCHEMA_HAS_REGEX)
     template <typename Json>
     class pattern_validator : public keyword_validator<Json>
     {
@@ -624,13 +621,13 @@ namespace jsonschema {
         using walk_reporter_type = typename json_schema_traits<Json>::walk_reporter_type;
 
         std::string pattern_string_;
-        std::regex regex_;
+        jsoncons::jsonschema::regex regex_;
 
     public:
         pattern_validator(const Json& schema, const uri& schema_location, const std::string& custom_message,
-            const std::string& pattern_string, const std::regex& regex)
+            const std::string& pattern_string, jsoncons::jsonschema::regex&& regex)
             : keyword_validator<Json>("pattern", schema, schema_location, custom_message), 
-              pattern_string_(pattern_string), regex_(regex)
+              pattern_string_(pattern_string), regex_(std::move(regex))
         {
         }
 
@@ -650,7 +647,7 @@ namespace jsonschema {
             eval_context<Json> this_context(context, this->keyword_name());
 
             auto s = instance.template as<std::string>();
-            if (!std::regex_search(s, regex_))
+            if (!regex_.search(s))
             {
                 std::string message("String '");
                 message.append(s);
@@ -2735,11 +2732,11 @@ namespace jsonschema {
         using schema_validator_ptr_type = typename schema_validator<Json>::schema_validator_ptr_type;
         using walk_reporter_type = typename json_schema_traits<Json>::walk_reporter_type;
 
-        std::vector<std::pair<std::regex, schema_validator_ptr_type>> pattern_properties_;
+        std::vector<std::pair<jsoncons::jsonschema::regex, schema_validator_ptr_type>> pattern_properties_;
 
     public:
         pattern_properties_validator(const Json& schema, const uri& schema_location, const std::string& custom_message,
-            std::vector<std::pair<std::regex, schema_validator_ptr_type>>&& pattern_properties)
+            std::vector<std::pair<jsoncons::jsonschema::regex, schema_validator_ptr_type>>&& pattern_properties)
             : keyword_validator<Json>("patternProperties", schema, std::move(schema_location), custom_message),
               pattern_properties_(std::move(pattern_properties))
         {
@@ -2759,7 +2756,7 @@ namespace jsonschema {
             (void)reporter;
             (void)patch;
             (void)allowed_properties;
-#if defined(JSONCONS_HAS_STD_REGEX)
+#if defined(JSONCONS_JSONSCHEMA_HAS_REGEX)
             if (!instance.is_object())
             {
                 return walk_result::advance;
@@ -2773,7 +2770,7 @@ namespace jsonschema {
                 // check all matching "patternProperties"
                 for (auto& schema_pp : pattern_properties_)
                 {
-                    if (std::regex_search(prop.key(), schema_pp.first)) 
+                    if (schema_pp.first.search(prop.key())) 
                     {
                         allowed_properties.insert(prop.key());
                         std::size_t errors = reporter.error_count();
@@ -2810,7 +2807,7 @@ namespace jsonschema {
                 return result;
             }
             (void)context;
-#if defined(JSONCONS_HAS_STD_REGEX)
+#if defined(JSONCONS_JSONSCHEMA_HAS_REGEX)
             eval_context<Json> this_context(context, this->keyword_name());
             for (const auto& prop : instance.object_range()) 
             {
@@ -2820,7 +2817,7 @@ namespace jsonschema {
                 // check all matching "patternProperties"
                 for (auto& schema_pp : pattern_properties_)
                 {
-                    if (std::regex_search(prop.key(), schema_pp.first)) 
+                    if (schema_pp.first.search(prop.key())) 
                     {
                         allowed_properties.insert(prop.key());
                         result = schema_pp.second->walk(prop_context, prop.value() , prop_location, reporter);

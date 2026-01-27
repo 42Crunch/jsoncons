@@ -20,12 +20,9 @@
 #include <jsoncons_ext/jsonschema/common/schema_validator_factory_base.hpp>
 #include <jsoncons_ext/jsonschema/common/keyword_validator_factory.hpp>
 #include <jsoncons_ext/jsonschema/common/schema_validator.hpp>
+#include <jsoncons_ext/jsonschema/common/regex.hpp>
 #include <jsoncons_ext/jsonschema/draft201909/schema_draft201909.hpp>
 #include <jsoncons_ext/jsonschema/json_schema.hpp>
-
-#if defined(JSONCONS_HAS_STD_REGEX)
-#include <regex>
-#endif
 
 namespace jsoncons {
 namespace jsonschema {
@@ -139,7 +136,7 @@ namespace draft201909 {
             validation_factory_map_.emplace("contentMediaType", 
                 [&](const compilation_context<Json>& context, const Json& sch, const Json& parent, anchor_uri_map_type&){return factory_.make_content_media_type_validator(context, sch, parent);});
 */
-#if defined(JSONCONS_HAS_STD_REGEX)
+#if defined(JSONCONS_JSONSCHEMA_HAS_REGEX)
             validation_factory_map_.emplace("pattern", 
                 [&](const compilation_context<Json>& context, const Json& sch, const Json& parent, anchor_uri_map_type&){return factory_.make_pattern_validator(context, sch, parent);});
 #endif
@@ -363,7 +360,7 @@ namespace draft201909 {
                 }
                 std::unique_ptr<pattern_properties_validator<Json>> pattern_properties;
     
-        #if defined(JSONCONS_HAS_STD_REGEX)
+        #if defined(JSONCONS_JSONSCHEMA_HAS_REGEX)
                 it = sch.find("patternProperties");
                 if (it != sch.object_range().end())
                 {
@@ -383,7 +380,7 @@ namespace draft201909 {
                     {
                         validators.emplace_back(std::move(properties));
                     }
-    #if defined(JSONCONS_HAS_STD_REGEX)
+    #if defined(JSONCONS_JSONSCHEMA_HAS_REGEX)
                     if (pattern_properties)
                     {
                         validators.emplace_back(std::move(pattern_properties));
