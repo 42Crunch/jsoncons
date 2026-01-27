@@ -5,12 +5,12 @@
 // See https://github.com/danielaparker/jsoncons for latest version
 
 #include <jsoncons_ext/jsonschema/jsonschema.hpp>
+#include <jsoncons_ext/jsonschema/common/regex.hpp>
 #include <jsoncons/json.hpp>
 #include <jsoncons/utility/byte_string.hpp>
 
 #include <fstream>
 #include <iostream>
-#include <regex>
 #include <catch/catch.hpp>
 
 using jsoncons::json;
@@ -108,7 +108,7 @@ TEST_CASE("jsonschema draft6 tests")
     SECTION("tests")
     {
         jsonschema_tests("./jsonschema/JSON-Schema-Test-Suite/tests/draft6/additionalItems.json");
-#ifdef JSONCONS_HAS_STD_REGEX
+#ifdef JSONCONS_JSONSCHEMA_HAS_REGEX
         jsonschema_tests("./jsonschema/JSON-Schema-Test-Suite/tests/draft6/additionalProperties.json");
 #endif
         jsonschema_tests("./jsonschema/JSON-Schema-Test-Suite/tests/draft6/allOf.json");
@@ -125,7 +125,7 @@ TEST_CASE("jsonschema draft6 tests")
         jsonschema_tests("./jsonschema/JSON-Schema-Test-Suite/tests/draft6/exclusiveMaximum.json");
         jsonschema_tests("./jsonschema/JSON-Schema-Test-Suite/tests/draft6/exclusiveMinimum.json");
 
-#ifdef JSONCONS_HAS_STD_REGEX
+#ifdef JSONCONS_JSONSCHEMA_HAS_REGEX
         //jsonschema_tests("./jsonschema/JSON-Schema-Test-Suite/tests/draft6/format.json");
 #endif
         jsonschema_tests("./jsonschema/JSON-Schema-Test-Suite/tests/draft6/items.json");
@@ -141,7 +141,7 @@ TEST_CASE("jsonschema draft6 tests")
         jsonschema_tests("./jsonschema/JSON-Schema-Test-Suite/tests/draft6/multipleOf.json");
         jsonschema_tests("./jsonschema/JSON-Schema-Test-Suite/tests/draft6/not.json");
         jsonschema_tests("./jsonschema/JSON-Schema-Test-Suite/tests/draft6/oneOf.json");
-#ifdef JSONCONS_HAS_STD_REGEX
+#ifdef JSONCONS_JSONSCHEMA_HAS_REGEX
         jsonschema_tests("./jsonschema/JSON-Schema-Test-Suite/tests/draft6/pattern.json");
         jsonschema_tests("./jsonschema/JSON-Schema-Test-Suite/tests/draft6/patternProperties.json");
         jsonschema_tests("./jsonschema/JSON-Schema-Test-Suite/tests/draft6/properties.json");

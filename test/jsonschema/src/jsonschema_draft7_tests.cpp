@@ -7,9 +7,9 @@
 #include <catch/catch.hpp>
 #include <fstream>
 #include <iostream>
-#include <regex>
 
 #include <jsoncons_ext/jsonschema/jsonschema.hpp>
+#include <jsoncons_ext/jsonschema/common/regex.hpp>
 #include <jsoncons/json.hpp>
 #include <jsoncons/utility/byte_string.hpp>
 
@@ -111,7 +111,7 @@ TEST_CASE("jsonschema draft7 tests")
     SECTION("tests")
     {
         jsonschema_tests("./jsonschema/JSON-Schema-Test-Suite/tests/draft7/additionalItems.json");
-#ifdef JSONCONS_HAS_STD_REGEX
+#ifdef JSONCONS_JSONSCHEMA_HAS_REGEX
         jsonschema_tests("./jsonschema/JSON-Schema-Test-Suite/tests/draft7/additionalProperties.json");
 #endif
         jsonschema_tests("./jsonschema/JSON-Schema-Test-Suite/tests/draft7/allOf.json");
@@ -128,7 +128,7 @@ TEST_CASE("jsonschema draft7 tests")
         jsonschema_tests("./jsonschema/JSON-Schema-Test-Suite/tests/draft7/exclusiveMaximum.json");
         jsonschema_tests("./jsonschema/JSON-Schema-Test-Suite/tests/draft7/exclusiveMinimum.json");
 
-#ifdef JSONCONS_HAS_STD_REGEX
+#ifdef JSONCONS_JSONSCHEMA_HAS_REGEX
         //jsonschema_tests("./jsonschema/JSON-Schema-Test-Suite/tests/draft7/format.json");
 #endif
         jsonschema_tests("./jsonschema/JSON-Schema-Test-Suite/tests/draft7/if-then-else.json");
@@ -145,7 +145,7 @@ TEST_CASE("jsonschema draft7 tests")
         jsonschema_tests("./jsonschema/JSON-Schema-Test-Suite/tests/draft7/multipleOf.json");
         jsonschema_tests("./jsonschema/JSON-Schema-Test-Suite/tests/draft7/not.json");
         jsonschema_tests("./jsonschema/JSON-Schema-Test-Suite/tests/draft7/oneOf.json");
-#ifdef JSONCONS_HAS_STD_REGEX
+#ifdef JSONCONS_JSONSCHEMA_HAS_REGEX
         jsonschema_tests("./jsonschema/JSON-Schema-Test-Suite/tests/draft7/pattern.json");
         jsonschema_tests("./jsonschema/JSON-Schema-Test-Suite/tests/draft7/patternProperties.json");
         jsonschema_tests("./jsonschema/JSON-Schema-Test-Suite/tests/draft7/properties.json");
