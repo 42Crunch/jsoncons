@@ -21,6 +21,7 @@
 #include <jsoncons_ext/jsonschema/common/schema_validator.hpp>
 #include <jsoncons_ext/jsonschema/evaluation_options.hpp>
 #include <jsoncons_ext/jsonschema/common/schema_validator_factory_base.hpp>
+#include <jsoncons_ext/jsonschema/common/regex.hpp>
 
 namespace jsoncons {
 namespace jsonschema {
@@ -75,8 +76,7 @@ namespace jsonschema {
                 context.get_custom_message(keyword), std::move(properties));
         }
 
-#if defined(JSONCONS_HAS_STD_REGEX)
-                
+#if defined(JSONCONS_JSONSCHEMA_HAS_REGEX)
         std::unique_ptr<pattern_properties_validator<Json>> make_pattern_properties_validator( const compilation_context<Json>& context, 
             const Json& sch, const Json& parent, anchor_uri_map_type& anchor_dict)
         {
@@ -84,14 +84,20 @@ namespace jsonschema {
             uri schema_location = context.get_base_uri();
             std::string custom_message = context.get_custom_message(keyword);
 
-            std::vector<std::pair<std::regex, schema_validator_ptr_type>> pattern_properties;
+            std::vector<std::pair<jsoncons::jsonschema::regex, schema_validator_ptr_type>> pattern_properties;
             
             for (const auto& prop : sch.object_range())
             {
+                const auto &key = prop.key();
+                jsoncons::jsonschema::regex re{key.data(), key.size()};
+                if (!re.compile()) {
+                    const std::string message("patternProperties must be a valid regex (" + re.error() + ")");
+                    JSONCONS_THROW(schema_error(schema_location.string() + ": " + message));
+                }
                 jsoncons::string_view sub_keys[] = {keyword};
                 pattern_properties.emplace_back(
                     std::make_pair(
-                        std::regex(prop.key(), std::regex::ECMAScript),
+                        std::move(re),
                         factory_->make_cross_draft_schema_validator(context, prop.value(), sub_keys, anchor_dict)));
                 
             }
@@ -456,9 +462,13 @@ namespace jsonschema {
         {
             uri schema_location = context.make_schema_location("pattern");
             auto pattern_string = sch.template as<std::string>();
-            auto regex = std::regex(pattern_string, std::regex::ECMAScript);
+            jsoncons::jsonschema::regex re{pattern_string};
+            if (!re.compile()) {
+                const std::string message("pattern must be a valid regex (" + re.error() + ")");
+                JSONCONS_THROW(schema_error(schema_location.string() + ": " + message));
+            }
             return jsoncons::make_unique<pattern_validator<Json>>(parent, schema_location, context.get_custom_message("pattern"), 
-                pattern_string, regex);
+                pattern_string, std::move(re));
         }
 
         std::unique_ptr<max_items_validator<Json>> make_max_items_validator(const compilation_context<Json>& context, 

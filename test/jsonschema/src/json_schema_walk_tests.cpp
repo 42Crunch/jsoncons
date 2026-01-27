@@ -12,7 +12,6 @@
 #include <catch/catch.hpp>
 #include <fstream>
 #include <iostream>
-#include <regex>
 
 using jsoncons::json;
 using jsoncons::ojson;

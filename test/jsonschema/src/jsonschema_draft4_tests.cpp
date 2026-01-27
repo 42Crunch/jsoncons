@@ -5,12 +5,12 @@
 // See https://github.com/danielaparker/jsoncons for latest version
 
 #include <jsoncons_ext/jsonschema/jsonschema.hpp>
+#include <jsoncons_ext/jsonschema/common/regex.hpp>
 #include <jsoncons/json.hpp>
 #include <jsoncons/utility/byte_string.hpp>
 
 #include <fstream>
 #include <iostream>
-#include <regex>
 #include <catch/catch.hpp>
 
 using jsoncons::json;
@@ -108,7 +108,7 @@ TEST_CASE("jsonschema draft4 tests")
     SECTION("tests")
     {
         jsonschema_tests("./jsonschema/JSON-Schema-Test-Suite/tests/draft4/additionalItems.json");
-#ifdef JSONCONS_HAS_STD_REGEX
+#ifdef JSONCONS_JSONSCHEMA_HAS_REGEX
         jsonschema_tests("./jsonschema/JSON-Schema-Test-Suite/tests/draft4/additionalProperties.json");
 #endif
         jsonschema_tests("./jsonschema/JSON-Schema-Test-Suite/tests/draft4/allOf.json");
@@ -120,7 +120,7 @@ TEST_CASE("jsonschema draft4 tests")
 
         jsonschema_tests("./jsonschema/JSON-Schema-Test-Suite/tests/draft4/enum.json");
 
-#ifdef JSONCONS_HAS_STD_REGEX
+#ifdef JSONCONS_JSONSCHEMA_HAS_REGEX
         //jsonschema_tests("./jsonschema/JSON-Schema-Test-Suite/tests/draft4/format.json");
 #endif
         jsonschema_tests("./jsonschema/JSON-Schema-Test-Suite/tests/draft4/items.json");
@@ -136,7 +136,7 @@ TEST_CASE("jsonschema draft4 tests")
         jsonschema_tests("./jsonschema/JSON-Schema-Test-Suite/tests/draft4/multipleOf.json");
         jsonschema_tests("./jsonschema/JSON-Schema-Test-Suite/tests/draft4/not.json");
         jsonschema_tests("./jsonschema/JSON-Schema-Test-Suite/tests/draft4/oneOf.json");
-#ifdef JSONCONS_HAS_STD_REGEX
+#ifdef JSONCONS_JSONSCHEMA_HAS_REGEX
         jsonschema_tests("./jsonschema/JSON-Schema-Test-Suite/tests/draft4/pattern.json");
         jsonschema_tests("./jsonschema/JSON-Schema-Test-Suite/tests/draft4/patternProperties.json");
         jsonschema_tests("./jsonschema/JSON-Schema-Test-Suite/tests/draft4/properties.json");

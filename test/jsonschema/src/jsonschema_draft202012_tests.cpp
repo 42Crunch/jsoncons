@@ -5,12 +5,12 @@
 // See https://github.com/danielaparker/jsoncons for latest version
 
 #include <jsoncons_ext/jsonschema/jsonschema.hpp>
+#include <jsoncons_ext/jsonschema/common/regex.hpp>
 #include <jsoncons/json.hpp>
 #include <jsoncons/utility/byte_string.hpp>
 
 #include <fstream>
 #include <iostream>
-#include <regex>
 #include <catch/catch.hpp>
 
 using jsoncons::json;
@@ -121,7 +121,7 @@ TEST_CASE("jsonschema draft2020-12 tests")
     SECTION("tests")
     {
         jsonschema_tests("./jsonschema/JSON-Schema-Test-Suite/tests/draft2020-12/anchor.json"); 
-#ifdef JSONCONS_HAS_STD_REGEX
+#ifdef JSONCONS_JSONSCHEMA_HAS_REGEX
         jsonschema_tests("./jsonschema/JSON-Schema-Test-Suite/tests/draft2020-12/additionalProperties.json");
 #endif
         jsonschema_tests("./jsonschema/JSON-Schema-Test-Suite/tests/draft2020-12/allOf.json");
@@ -140,7 +140,7 @@ TEST_CASE("jsonschema draft2020-12 tests")
         jsonschema_tests("./jsonschema/JSON-Schema-Test-Suite/tests/draft2020-12/exclusiveMaximum.json");
         jsonschema_tests("./jsonschema/JSON-Schema-Test-Suite/tests/draft2020-12/exclusiveMinimum.json");
 
-#ifdef JSONCONS_HAS_STD_REGEX
+#ifdef JSONCONS_JSONSCHEMA_HAS_REGEX
         jsonschema_tests("./jsonschema/JSON-Schema-Test-Suite/tests/draft2020-12/format.json");
 #endif
 
@@ -159,7 +159,7 @@ TEST_CASE("jsonschema draft2020-12 tests")
         jsonschema_tests("./jsonschema/JSON-Schema-Test-Suite/tests/draft2020-12/multipleOf.json");
         jsonschema_tests("./jsonschema/JSON-Schema-Test-Suite/tests/draft2020-12/not.json");
         jsonschema_tests("./jsonschema/JSON-Schema-Test-Suite/tests/draft2020-12/oneOf.json");
-#ifdef JSONCONS_HAS_STD_REGEX
+#ifdef JSONCONS_JSONSCHEMA_HAS_REGEX
         jsonschema_tests("./jsonschema/JSON-Schema-Test-Suite/tests/draft2020-12/pattern.json");
         jsonschema_tests("./jsonschema/JSON-Schema-Test-Suite/tests/draft2020-12/patternProperties.json");
         jsonschema_tests("./jsonschema/JSON-Schema-Test-Suite/tests/draft2020-12/properties.json");
