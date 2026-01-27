@@ -5,12 +5,12 @@
 // See https://github.com/danielaparker/jsoncons for latest version
 
 #include <jsoncons_ext/jsonschema/jsonschema.hpp>
+#include <jsoncons_ext/jsonschema/common/regex.hpp>
 #include <jsoncons/json.hpp>
 #include <jsoncons/utility/byte_string.hpp>
 
 #include <fstream>
 #include <iostream>
-#include <regex>
 #include <catch/catch.hpp>
 
 using jsoncons::json;
@@ -115,7 +115,7 @@ TEST_CASE("jsonschema draft2019-09 tests")
 
         jsonschema_tests("./jsonschema/JSON-Schema-Test-Suite/tests/draft2019-09/anchor.json"); // UNCOMMENT METASCHEMA
         jsonschema_tests("./jsonschema/JSON-Schema-Test-Suite/tests/draft2019-09/additionalItems.json");
-#ifdef JSONCONS_HAS_STD_REGEX
+#ifdef JSONCONS_JSONSCHEMA_HAS_REGEX
         jsonschema_tests("./jsonschema/JSON-Schema-Test-Suite/tests/draft2019-09/additionalProperties.json");
 #endif
 
@@ -134,7 +134,7 @@ TEST_CASE("jsonschema draft2019-09 tests")
         jsonschema_tests("./jsonschema/JSON-Schema-Test-Suite/tests/draft2019-09/exclusiveMaximum.json");
         jsonschema_tests("./jsonschema/JSON-Schema-Test-Suite/tests/draft2019-09/exclusiveMinimum.json");
 
-#ifdef JSONCONS_HAS_STD_REGEX
+#ifdef JSONCONS_JSONSCHEMA_HAS_REGEX
         jsonschema_tests("./jsonschema/JSON-Schema-Test-Suite/tests/draft2019-09/format.json");
 #endif
 
@@ -157,7 +157,7 @@ TEST_CASE("jsonschema draft2019-09 tests")
 
         jsonschema_tests("./jsonschema/JSON-Schema-Test-Suite/tests/draft2019-09/recursiveRef.json");
 
-#ifdef JSONCONS_HAS_STD_REGEX
+#ifdef JSONCONS_JSONSCHEMA_HAS_REGEX
         jsonschema_tests("./jsonschema/JSON-Schema-Test-Suite/tests/draft2019-09/pattern.json");
         jsonschema_tests("./jsonschema/JSON-Schema-Test-Suite/tests/draft2019-09/patternProperties.json");
         jsonschema_tests("./jsonschema/JSON-Schema-Test-Suite/tests/draft2019-09/properties.json");

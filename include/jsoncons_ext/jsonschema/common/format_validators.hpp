@@ -19,10 +19,7 @@
 #include <jsoncons/utility/uri.hpp>
 #include <jsoncons_ext/jsonpointer/jsonpointer.hpp>
 #include <jsoncons_ext/jsonschema/common/validator.hpp>
-
-#if defined(JSONCONS_HAS_STD_REGEX)
-#include <regex>
-#endif
+#include <jsoncons_ext/jsonschema/common/regex.hpp>
 
 namespace jsoncons {
 namespace jsonschema {
@@ -1234,16 +1231,14 @@ namespace jsonschema {
         error_reporter<Json>& reporter,
         jsoncons::optional<Json>& patch) 
     {
-#if defined(JSONCONS_HAS_STD_REGEX)
-        JSONCONS_TRY 
-        {
-            std::regex re(sv.data(), sv.size(), std::regex::ECMAScript);
-        }
-        JSONCONS_CATCH(...) 
+        jsoncons::jsonschema::regex re{sv};
+        if (!re.compile())
         {
             std::string message{"'"};
             message.append(sv.data(), sv.size());
-            message.append("' is not a valid ECMAScript regular expression. ");
+            message.append("' is not a valid ECMAScript regular expression (");
+            message.append(re.error());
+            message.append(").");
             walk_state result = reporter.error(message_factory.make_validation_message(
                 eval_path, 
                 instance_location, 
@@ -1253,7 +1248,6 @@ namespace jsonschema {
                 return result;
             }
         }
-#endif
         return walk_state::advance;
     } 
 
