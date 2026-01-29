@@ -147,8 +147,9 @@ namespace jsonschema {
 
                         if (external_sch.is_object() || external_sch.is_bool())
                         {
+                            auto base = loc.base();
                             anchor_uri_map_type anchor_dict2;
-                            this->save_schema(make_cross_draft_schema_validator(compilation_context<Json>(uri_wrapper(loc.base())), 
+                            this->save_schema(make_cross_draft_schema_validator(compilation_context<Json>(uri_wrapper(base.string().empty() ? loc : loc.base())), 
                                 external_sch, {}, anchor_dict2));
                             found = true;
                         }
