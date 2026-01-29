@@ -177,6 +177,182 @@ void resolve_uri_example()
     }
 }
 
+void resolve_openapi_example()
+{ 
+    std::string openapi_spec = R"(
+{
+  "openapi": "3.0.4",
+  "paths": {
+    "/pet": {
+      "put": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Pet"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Pet"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Category": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "example": 1
+          },
+          "name": {
+            "type": "string",
+            "example": "Dogs"
+          }
+        }
+      },
+      "Tag": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "Pet": {
+        "required": [
+          "name",
+          "photoUrls"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "example": 10
+          },
+          "name": {
+            "type": "string",
+            "example": "doggie"
+          },
+          "category": {
+            "$ref": "#/components/schemas/Category"
+          },
+          "photoUrls": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Tag"
+            }
+          },
+          "status": {
+            "type": "string",
+            "description": "pet status in the store",
+            "enum": [
+              "available",
+              "pending",
+              "sold"
+            ]
+          }
+        }
+      }
+    }
+  }
+}
+    )";
+    json openapi = json::parse(openapi_spec);    
+ 
+    auto resolver = [&](const jsoncons::uri& uri) -> json
+    {
+        auto path = uri.path();
+        auto fragment = uri.fragment();
+        auto base = uri.base().string();
+        std::cout << "Requested URI: " << uri.string() << "\n";
+        std::cout << "base: " << base
+                  << ", path: " << path
+                  << ", fragment: " << fragment
+                  << "\n\n";
+        if (fragment.empty() || !base.empty() || !path.empty()) {
+            return json::null();
+        }
+
+        std::error_code ec;
+        json schema = jsonpointer::get(openapi, fragment, ec);
+        if (ec) {
+            return json::null();
+        }
+        return schema;
+    };
+    
+    json &request_schema =
+        jsonpointer::get(openapi,
+                         "/paths/~1pet/put/requestBody/content/application~1json/schema");
+    json &response_schema =
+        jsonpointer::get(openapi,
+                         "/paths/~1pet/put/responses/200/content/application~1json/schema");
+
+    // Data
+    json data = json::parse(R"(
+{
+    "name": "kitty",
+    "photoUrls": [
+        "http://localhost/kitty"
+    ]
+}
+    )");
+
+    for (auto *schema: { &request_schema, &response_schema }) {
+        try
+        {
+            // Throws schema_error if JSON Schema compilation fails
+            auto options = jsonschema::evaluation_options{}
+                .default_version(jsonschema::schema_version::draft7())
+                .default_base_uri("#")
+                ;
+            auto compiled = jsonschema::make_json_schema(*schema, resolver, options);
+
+            // Will call report function object for each schema violation
+            auto report = [](const jsonschema::validation_message& msg) -> jsonschema::walk_result
+            {
+                std::cout << msg.instance_location().string() << ": " << msg.message() << "\n";
+                for (const auto& detail : msg.details())
+                {
+                    std::cout << "    "  << detail.message() << "\n";
+                }
+                return jsonschema::walk_result::advance;
+            };
+            compiled.validate(data, report);
+        }
+        catch (const std::exception& e)
+        {
+            std::cout << e.what() << '\n';
+        }
+    }
+}
+
 void defaults_example() 
 {
     json schema = json::parse(R"(
@@ -880,6 +1056,8 @@ int main()
     cross_schema_example();
 
     resolve_uri_example();
+
+    resolve_openapi_example();
 
     validate_with_patch_to_fix_document(); // (since 1.7.0)
     validate_usimg_pmr_allocator(); // (since 1.7.0)    
