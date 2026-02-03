@@ -177,7 +177,12 @@ void resolve_uri_example()
     }
 }
 
-void resolve_openapi_example()
+static std::string to_string(const json &json)
+{
+    return json.to_string();
+}
+
+void resolve_openapi30_example()
 { 
     std::string openapi_spec = R"(
 {
@@ -321,6 +326,272 @@ void resolve_openapi_example()
     "photoUrls": [
         "http://localhost/kitty"
     ]
+}
+    )");
+
+    for (auto *schema: { &request_schema, &response_schema }) {
+        try
+        {
+            // Throws schema_error if JSON Schema compilation fails
+            auto options = jsonschema::evaluation_options{}
+                .default_version(jsonschema::schema_version::draft7())
+                .default_base_uri("#")
+                ;
+            auto compiled = jsonschema::make_json_schema(*schema, resolver, options);
+
+            // Will call report function object for each schema violation
+            auto report = [](const jsonschema::validation_message& msg) -> jsonschema::walk_result
+            {
+                std::cout << msg.instance_location().string() << ": " << msg.message() << "\n";
+                for (const auto& detail : msg.details())
+                {
+                    std::cout << "    "  << detail.message() << "\n";
+                }
+                return jsonschema::walk_result::advance;
+            };
+            compiled.validate(data, report);
+        }
+        catch (const std::exception& e)
+        {
+            std::cout << e.what() << '\n';
+        }
+    }
+}
+
+void resolve_openapi31_example()
+{ 
+    std::string openapi_spec = R"(
+{
+  "openapi": "3.1.0",
+  "paths": {
+    "/pet": {
+      "put": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Pet",
+                "description": "A Pet in JSON Format",
+                "required": [
+                  "id"
+                ],
+                "writeOnly": true
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Pet",
+                  "description": "A Pet in JSON Format",
+                  "readOnly": true
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Category": {
+        "$id": "/api/v31/components/schemas/category",
+        "description": "Category",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "xml": {
+          "name": "Category"
+        }
+      },
+      "Pet": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "description": "Pet",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "category": {
+            "$ref": "#/components/schemas/Category",
+            "description": "Pet Category"
+          },
+          "name": {
+            "type": "string",
+            "examples": [
+              "doggie"
+            ]
+          },
+          "photoUrls": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "xml": {
+                "name": "photoUrl"
+              }
+            },
+            "xml": {
+              "wrapped": true
+            }
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Tag"
+            }
+          },
+          "status": {
+            "type": "string",
+            "description": "pet status in the store",
+            "enum": [
+              "available",
+              "pending",
+              "sold"
+            ]
+          },
+          "availableInstances": {
+            "type": "integer",
+            "format": "int32",
+            "examples": [
+              "7"
+            ],
+            "exclusiveMaximum": 10,
+            "exclusiveMinimum": 1,
+            "swagger-extension": true
+          },
+          "petDetailsId": {
+            "type": "integer",
+            "format": "int64",
+            "$ref": "/api/v31/components/schemas/petdetails#pet_details_id"
+          },
+          "petDetails": {
+            "$ref": "/api/v31/components/schemas/petdetails"
+          }
+        },
+        "required": [
+          "name",
+          "photoUrls"
+        ]
+      },
+      "PetDetails": {
+        "$id": "/api/v31/components/schemas/petdetails",
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$vocabulary": "https://spec.openapis.org/oas/3.1/schema-base",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "$anchor": "pet_details_id",
+            "examples": [
+              "10"
+            ]
+          },
+          "category": {
+            "$ref": "/api/v31/components/schemas/category",
+            "description": "PetDetails Category"
+          },
+          "tag": {
+            "$ref": "/api/v31/components/schemas/tag"
+          }
+        }
+      },
+      "Tag": {
+        "$id": "/api/v31/components/schemas/tag",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}
+    )";
+    json openapi = json::parse(openapi_spec);    
+
+    std::map<std::string, json> schemas_map;
+    json schemas = openapi["components"]["schemas"];
+    for (const auto &kv: schemas.object_range()) {
+        const auto &key = kv.key();
+        const auto &value = kv.value();
+        if (!value.is_object()) {
+            continue;
+        }
+        auto id = value.find("$id");
+        if (id == value.object_range().end()) {
+            continue;
+        }
+        schemas_map[id->value().as_string()] = value;
+    }
+ 
+    auto resolver = [&](const jsoncons::uri& uri) -> json
+    {
+        auto path = uri.path();
+        auto fragment = uri.fragment();
+        auto base = uri.base().string();
+        std::cout << "Requested URI: " << uri.string() << "\n";
+        std::cout << "base: " << base
+                  << ", path: " << path
+                  << ", fragment: " << fragment
+                  << "\n\n";
+        if (!base.empty()) {
+            auto it = schemas_map.find(base);
+            if (it != schemas_map.end()) {
+                return it->second;
+            }
+        }
+        else if (path.empty() && !fragment.empty()) {
+            std::error_code ec;
+            json schema = jsonpointer::get(openapi, fragment, ec);
+            if (!ec) {
+                return schema;
+            }
+        }
+        return json::null();
+    };
+    
+    json &request_schema =
+        jsonpointer::get(openapi,
+                         "/paths/~1pet/put/requestBody/content/application~1json/schema");
+    json &response_schema =
+        jsonpointer::get(openapi,
+                         "/paths/~1pet/put/responses/200/content/application~1json/schema");
+
+    // Data
+    json data = json::parse(R"(
+{
+    "name": "kitty",
+    "photoUrls": [
+        "http://localhost/kitty"
+    ],
+    "petDetailsId": 10,
+    "petDetails": {
+        "id": 10,
+        "category": {
+            "id": "12345",
+            "name": "my category",
+            "tag": {
+                "id": 6789,
+                "name": "my tag"
+            }
+        }
+    }
 }
     )");
 
@@ -807,7 +1078,8 @@ int main()
     
     resolve_uri_example();
 
-    resolve_openapi_example();
+    resolve_openapi30_example();
+    resolve_openapi31_example();
     
     std::cout << "\n";
 }
