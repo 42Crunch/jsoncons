@@ -347,6 +347,118 @@
         ]
     },
     {
+        "description": "nullable matches the type (string) and null",
+        "schema": {"type": "string", "nullable": true},
+        "tests": [
+            {
+                "description": "an integer is not null",
+                "data": 1,
+                "valid": false
+            },
+            {
+                "description": "a float is not null",
+                "data": 1.1,
+                "valid": false
+            },
+            {
+                "description": "zero is not null",
+                "data": 0,
+                "valid": false
+            },
+            {
+                "description": "an object is not null",
+                "data": {},
+                "valid": false
+            },
+            {
+                "description": "an array is not null",
+                "data": [],
+                "valid": false
+            },
+            {
+                "description": "true is not null",
+                "data": true,
+                "valid": false
+            },
+            {
+                "description": "false is not null",
+                "data": false,
+                "valid": false
+            },
+            {
+                "description": "a string is valid",
+                "data": "foo",
+                "valid": true
+            },
+            {
+                "description": "an empty string is valid",
+                "data": "",
+                "valid": true
+            },
+            {
+                "description": "null is valid",
+                "data": null,
+                "valid": true
+            }
+        ]
+    },
+    {
+        "description": "x-nullable matches the type (string) and null",
+        "schema": {"type": "string", "x-nullable": true},
+        "tests": [
+            {
+                "description": "an integer is not null",
+                "data": 1,
+                "valid": false
+            },
+            {
+                "description": "a float is not null",
+                "data": 1.1,
+                "valid": false
+            },
+            {
+                "description": "zero is not null",
+                "data": 0,
+                "valid": false
+            },
+            {
+                "description": "an object is not null",
+                "data": {},
+                "valid": false
+            },
+            {
+                "description": "an array is not null",
+                "data": [],
+                "valid": false
+            },
+            {
+                "description": "true is not null",
+                "data": true,
+                "valid": false
+            },
+            {
+                "description": "false is not null",
+                "data": false,
+                "valid": false
+            },
+            {
+                "description": "a string is valid",
+                "data": "foo",
+                "valid": true
+            },
+            {
+                "description": "an empty string is valid",
+                "data": "",
+                "valid": true
+            },
+            {
+                "description": "null is valid",
+                "data": null,
+                "valid": true
+            }
+        ]
+    },
+    {
         "description": "multiple types can be specified in an array",
         "schema": {"type": ["integer", "string"]},
         "tests": [
