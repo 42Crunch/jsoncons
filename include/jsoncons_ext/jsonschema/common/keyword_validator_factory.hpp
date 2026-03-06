@@ -284,6 +284,16 @@ namespace jsonschema {
                         message.append("'");
                         JSONCONS_THROW(schema_error(message));
                     }
+                    // XXX: Handle OpenAPI `nullable` keyword
+                    if (type != "null") {
+                        auto it = parent.find("nullable");
+                        if (it == parent.object_range().end()) {
+                            it = parent.find("x-nullable");
+                        }
+                        if (it != parent.object_range().end() && (*it).value().as_bool()) {
+                            expected_types.push_back(json_schema_type::null);
+                        }
+                    }
                     break;
                 } 
 
