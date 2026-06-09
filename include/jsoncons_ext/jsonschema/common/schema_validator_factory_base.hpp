@@ -138,13 +138,15 @@ namespace jsonschema {
                     bool found = false;
                     for (auto it = resolve_funcs_.begin(); it != resolve_funcs_.end() && !found; ++it)
                     {
+                        std::cerr << "Resolving ref '" << loc.string() << "'" << std::endl;
                         Json external_sch = (*it)(loc);
 
                         if (external_sch.is_object() || external_sch.is_bool())
                         {
                             auto base = loc.base();
                             anchor_uri_map_type anchor_dict2;
-                            this->save_schema(make_cross_draft_schema_validator(compilation_context<Json>(uri_wrapper(base.string().empty() ? loc : loc.base())), 
+                            std::cerr << "Creating schema for ref '" << loc.string() << "'" << std::endl;
+                            this->save_schema(make_cross_draft_schema_validator(compilation_context<Json>(uri_wrapper(base.string().empty() ? loc : base)), 
                                 std::move(external_sch), {}, anchor_dict2));
                             found = true;
                         }
@@ -152,6 +154,7 @@ namespace jsonschema {
                     if (found)
                     {
                         // Try resolving again
+                        std::cerr << "Verifying ref '" << loc.string() << "'" << std::endl;
                         if (schema_store_ptr_->find(loc) == schema_store_ptr_->end()) 
                         {
                             JSONCONS_THROW(jsonschema::schema_error("Unresolved reference '" + loc.string() + "'"));
@@ -188,6 +191,7 @@ namespace jsonschema {
 
         void insert_schema(const uri_wrapper& identifier, schema_validator<Json>* s)
         {
+            std::cerr << "Adding ref '" << identifier.uri().string() << "'" << std::endl;
             this->schema_store_ptr_->emplace(identifier.uri(), s);
         }
 
