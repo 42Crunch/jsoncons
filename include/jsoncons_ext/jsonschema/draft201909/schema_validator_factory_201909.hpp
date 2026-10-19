@@ -11,6 +11,7 @@
 #include <set>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 
 #include <jsoncons/nonstd/compiler_support.hpp>
 #include <jsoncons/utility/uri.hpp>
@@ -218,20 +219,18 @@ namespace draft201909 {
                 }
                 case json_type::object:
                 {
-                    std::set<std::string> known_keywords;
-
                     schema_validator_ptr = make_object_schema_validator(new_context, sch, anchor_dict);
                     schema_validator<Json>* p = schema_validator_ptr.get();
                     for (const auto& uri : new_context.uris()) 
                     { 
                         this->insert_schema(uri, p);
-                        /*for (const auto& item : sch.object_range())
+                        for (const auto& item : sch.object_range())
                         {
-                            if (known_keywords.find(item.key()) == known_keywords.end())
+                            if (known_keywords().find(item.key().c_str()) == known_keywords().end())
                             {
-                                this->insert_unknown_keyword(uri, item.key(), item.value()); // save unknown keywords for later reference
+                                this->insert_unknown_keyword(uri, std::string(item.key()), item.value()); // save unknown keywords for later reference
                             }
-                        }*/
+                        }
                     }          
                     break;
                 }
@@ -456,6 +455,61 @@ namespace draft201909 {
         }
 
     private:
+        static const std::unordered_set<std::string>& known_keywords()
+        {
+            static std::unordered_set<std::string> keywords{
+                "$anchor",
+                "$recursiveAnchor",
+                "$recursiveRef",
+                "$id",
+                "$ref",
+                "additionalItems",
+                "additionalProperties",
+                "allOf",
+                "anyOf",
+                "const",
+                "contains",
+                "contentEncoding",
+                "contentMediaType",
+                "default",
+                "$defs",
+                "dependencies",
+                "dependentRequired",
+                "dependentSchemas",
+                "description",
+                "enum",
+                "exclusiveMaximum",
+                "exclusiveMinimum",
+                "if",
+                "then",
+                "else",
+                "items",
+                "maximum",
+                "maxItems",
+                "maxLength",
+                "maxProperties",
+                "minimum",
+                "minItems",
+                "minLength",
+                "minProperties",
+                "multipleOf",
+                "not",
+                "oneOf",
+                "pattern",
+                "patternProperties",
+                "properties",
+                "propertyNames",
+                "readOnly",
+                "required",
+                "title",
+                "type",
+                "uniqueItems",
+                "unevaluatedItems",
+                "unevaluatedProperties",
+                "writeOnly"
+            };
+            return keywords;
+        }
 
         compilation_context<Json> make_compilation_context(const compilation_context<Json>& parent, 
             const Json& sch, jsoncons::span<const jsoncons::string_view> keys) const final
