@@ -103,6 +103,9 @@ namespace jsonschema {
         std::vector<jsoncons::uri> shared_inserted_;
     protected:
         std::vector<std::pair<jsoncons::uri, ref_type*>> unresolved_refs_; 
+        // The URIs of unresolved_refs_[0, unresolved_indexed_), which only grows
+        std::set<jsoncons::uri> unresolved_uris_;
+        std::size_t unresolved_indexed_{0};
         std::map<jsoncons::uri, Json> unknown_keywords_;
 
     public:
@@ -337,10 +340,13 @@ namespace jsonschema {
             if (new_uri.has_fragment() && !new_uri.has_plain_name_fragment()) 
             {
                 // is there a reference looking for this unknown-keyword, which is thus no longer a unknown keyword but a schema
-                auto unresolved_refs = std::find_if(this->unresolved_refs_.begin(), this->unresolved_refs_.end(),
-                    [new_uri](const std::pair<jsoncons::uri,ref<Json>*>& pr) {return pr.first == new_uri.uri();});
-                if (unresolved_refs != this->unresolved_refs_.end())
+                for (; unresolved_indexed_ < this->unresolved_refs_.size(); ++unresolved_indexed_)
                 {
+                    unresolved_uris_.insert(this->unresolved_refs_[unresolved_indexed_].first);
+                }
+                if (unresolved_uris_.find(new_uri.uri()) != unresolved_uris_.end())
+                {
+                    // the schema registers its own subschemas and unknown keywords
                     anchor_uri_map_type anchor_dict2;
                     this->save_schema(make_cross_draft_schema_validator(compilation_context<Json>(new_uri), value, {}, anchor_dict2));
                 }
@@ -348,14 +354,14 @@ namespace jsonschema {
                 {
                     //file.unknown_keywords.emplace(fragment, value);
                     this->unknown_keywords_.emplace(new_uri.uri(), value);
-                }
 
-                // recursively add possible subschemas of unknown keywords
-                if (value.type() == json_type::object)
-                {
-                    for (const auto& subsch : value.object_range())
+                    // recursively add possible subschemas of unknown keywords
+                    if (value.type() == json_type::object)
                     {
-                        insert_unknown_keyword(new_uri, std::string(subsch.name()), subsch.value());
+                        for (const auto& subsch : value.object_range())
+                        {
+                            insert_unknown_keyword(new_uri, std::string(subsch.name()), subsch.value());
+                        }
                     }
                 }
             }
