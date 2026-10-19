@@ -284,6 +284,31 @@ namespace jsonschema {
         return json_schema<Json>(schema_validator_factory_base->get_schema_validator());
     }
  
+    // Same as above, but the external schemas (loaded through the resolver)
+    // are compiled once in (and shared from) the given shared_store, which
+    // must outlive the returned json_schema.
+    template <typename Json,typename SchemaResolver>
+    typename std::enable_if<std::is_same<typename Json::char_type,char>::value &&
+        (nonstd::is_polymorphic_allocator<typename Json::allocator_type>::value ||
+         std::allocator_traits<typename Json::allocator_type>::is_always_equal::value) &&
+        nonstd::is_function_object_exact<SchemaResolver,Json,jsoncons::uri>::value,json_schema<Json>>::type
+    make_json_schema(Json root_schema, const SchemaResolver& resolver,
+        shared_schema_store<Json>& shared_store,
+        const evaluation_options& options = evaluation_options{})
+    {
+        using schema_store_type = std::map<jsoncons::uri, schema_validator<Json>*>;
+        schema_store_type schema_store;
+        validator_factory_factory<Json> factory_factory{};
+
+        std::unordered_map<std::string,bool> vocabulary{};
+        std::vector<resolve_uri_type<Json>> resolve_funcs = {{meta_resolver<Json>, resolver}};
+        auto schema_validator_factory_base = factory_factory(jsoncons::make_unique<Json>(std::move(root_schema)), options, &schema_store, resolve_funcs, vocabulary);
+
+        schema_validator_factory_base->set_shared_store(&shared_store);
+        schema_validator_factory_base->build_schema();
+        return json_schema<Json>(schema_validator_factory_base->get_schema_validator());
+    }
+
     template <typename Json>
     typename std::enable_if<std::is_same<typename Json::char_type,char>::value &&
         (nonstd::is_polymorphic_allocator<typename Json::allocator_type>::value ||

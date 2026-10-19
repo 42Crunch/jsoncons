@@ -23,6 +23,11 @@ json_schema<Json> make_json_schema(Json root_schema,
     const SchemaResolver& resolver,                                  
     const evaluation_options& options = evaluation_options{});         
                                                                   
+template <typename Json,typename SchemaResolver>
+json_schema<Json> make_json_schema(Json root_schema,
+    const SchemaResolver& resolver,                                       (5)   (since 1.11.0)
+    shared_schema_store<Json>& shared_store,
+    const evaluation_options& options = evaluation_options{});
 ```
 
 Returns a [json_schema<Json>](json_schema.md) that represents a compiled JSON Schema document.
@@ -54,6 +59,15 @@ wide-character types such as `wjson` and `wojson` and other stateful allocators 
     <td>Optional retrieval URI</td> 
   </tr>
   <tr>
+    <td>shared_store</td>
+    <td>A <code>shared_schema_store&lt;Json&gt;</code> in which the external schemas (those loaded through
+    the resolver) are compiled once and shared by all the compilations given the same store, instead of
+    being compiled again by each compilation. The store must outlive all the <code>json_schema</code>
+    compiled with it, the resolver must return the same schema for the same URI in all these compilations,
+    and these compilations must not run concurrently. The schemas of the root document itself are never shared,
+    and a failing compilation leaves the store unchanged.</td> 
+  </tr>
+  <tr>
     <td><a href="evaluation_options.md">options</a></td>
     <td>Evaluation options</td> 
   </tr>
@@ -65,7 +79,7 @@ A [json_schema<Json>](json_schema.md) that represents a compiled JSON Schema doc
 
 #### Exceptions
 
-(1)-(4) Throws a [schema_error](schema_error.md) if JSON Schema compilation fails.
+(1)-(5) Throws a [schema_error](schema_error.md) if JSON Schema compilation fails.
 
 ### Examples
 
