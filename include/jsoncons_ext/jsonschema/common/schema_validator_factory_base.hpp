@@ -9,10 +9,13 @@
 
 #include <cstddef>
 #include <functional>
+#include <map>
 #include <memory>
+#include <set>
 #include <string>
 #include <unordered_map>
 #include <utility>
+#include <vector>
 
 #include <jsoncons/nonstd/compiler_support.hpp>
 #include <jsoncons/utility/string_utils.hpp>
@@ -27,6 +30,41 @@ namespace jsonschema {
 
     template <typename Json>
     using resolve_uri_type = std::function<Json(const jsoncons::uri & /*id*/)>;
+
+    template <typename Json>
+    class schema_validator_factory_base;
+
+    // External schemas (those loaded through the resolvers) compiled once and
+    // shared by the compilations given this store, see
+    // make_json_schema(root_schema, resolver, shared_store, options).
+    //
+    // - It must outlive all the json_schema compiled with it, which reference
+    //   its schemas.
+    // - The external schemas are identified by their URI, so the resolvers of
+    //   all these compilations must return the same schema for the same URI.
+    // - The schemas of a root document itself are never shared.
+    // - Compilations with the same store must not run concurrently, while the
+    //   json_schema compiled with it can validate concurrently as usual.
+    template <typename Json>
+    class shared_schema_store
+    {
+        friend class schema_validator_factory_base<Json>;
+
+        // All the (sub)schemas of the shared external schemas by URI
+        std::map<jsoncons::uri, schema_validator<Json>*> schemas_;
+        // Owns the shared external schemas
+        std::vector<std::unique_ptr<schema_validator<Json>>> owned_;
+    public:
+        shared_schema_store() = default;
+        shared_schema_store(const shared_schema_store&) = delete;
+        shared_schema_store& operator=(const shared_schema_store&) = delete;
+
+        // Number of external schemas compiled in the store
+        std::size_t size() const
+        {
+            return owned_.size();
+        }
+    };
 
     template <typename Json>
     class schema_validator_factory_base
@@ -54,6 +92,15 @@ namespace jsonschema {
         
         // Owns external schemas
         std::vector<schema_validator_ptr_type> schema_validators_;
+
+        // Shared external schemas (optional), and while compiling one of them
+        shared_schema_store<Json>* shared_store_{nullptr};
+        bool compiling_shared_{false};
+        // Refs created while compiling a shared schema (resolved from the
+        // shared store only, never from this document's own schemas)
+        std::set<const ref_type*> shared_refs_;
+        // What this compilation added to the shared store (for rollback)
+        std::vector<jsoncons::uri> shared_inserted_;
     protected:
         std::vector<std::pair<jsoncons::uri, ref_type*>> unresolved_refs_; 
         std::map<jsoncons::uri, Json> unknown_keywords_;
@@ -88,9 +135,52 @@ namespace jsonschema {
 
         const std::unordered_map<std::string,bool>& vocabulary() const {return vocabulary_;}
         
+        void set_shared_store(shared_schema_store<Json>* shared_store)
+        {
+            shared_store_ = shared_store;
+        }
+
         void save_schema(schema_validator_ptr_type&& schema)
         {
-            schema_validators_.emplace_back(std::move(schema));
+            if (compiling_shared_)
+            {
+                shared_store_->owned_.emplace_back(std::move(schema));
+            }
+            else
+            {
+                schema_validators_.emplace_back(std::move(schema));
+            }
+        }
+
+        // Look up a schema by URI in this document's store, then in the
+        // shared store (only there if shared_only)
+        bool find_schema(const jsoncons::uri& u, schema_validator<Json>*& s,
+            bool shared_only = false) const
+        {
+            if (!shared_only)
+            {
+                auto it = schema_store_ptr_->find(u);
+                if (it != schema_store_ptr_->end())
+                {
+                    s = (*it).second;
+                    return true;
+                }
+            }
+            if (shared_store_ != nullptr)
+            {
+                auto it = shared_store_->schemas_.find(u);
+                if (it != shared_store_->schemas_.end())
+                {
+                    s = (*it).second;
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        bool is_shared_ref(const ref_type* r) const
+        {
+            return shared_refs_.find(r) != shared_refs_.end();
         }
 
         const std::string& schema() const
@@ -132,13 +222,45 @@ namespace jsonschema {
             //    std::cout << "    " << member.first.string() << "\n";
             //}
 
-            // load all external schemas that have not already been loaded           
+            // On failure, remove what was added to the shared store (whose
+            // refs may not be resolved), as if this compilation never happened
+            std::size_t shared_owned_mark = shared_store_ ? shared_store_->owned_.size() : 0;
+            JSONCONS_TRY
+            {
+                load_external_schemas();
+                resolve_references();
+            }
+            JSONCONS_CATCH (...)
+            {
+                compiling_shared_ = false;
+                if (shared_store_ != nullptr)
+                {
+                    for (const auto& u : shared_inserted_)
+                    {
+                        shared_store_->schemas_.erase(u);
+                    }
+                    while (shared_store_->owned_.size() > shared_owned_mark)
+                    {
+                        shared_store_->owned_.pop_back();
+                    }
+                }
+                JSONCONS_RETHROW;
+            }
+
+            return jsoncons::make_unique<document_schema_validator<Json>>(std::move(root_schema_), std::move(root_), std::move(schema_validators_));
+        }
+
+        void load_external_schemas()
+        {
+            // load all external schemas that have not already been loaded
             // new unresolved refs may be added to the end as earlier ones are resolved
             for (std::size_t i = 0; i < unresolved_refs_.size(); ++i)
             {
                 auto loc = unresolved_refs_[i].first;
+                bool shared_only = is_shared_ref(unresolved_refs_[i].second);
+                schema_validator<Json>* s = nullptr;
                 //std::cout << "unresolved: " << loc.string() << "\n";
-                if (schema_store_ptr_->find(loc) == schema_store_ptr_->end()) // registry for this file is empty
+                if (!find_schema(loc, s, shared_only)) // registry for this file is empty
                 {
                     bool found = false;
                     for (auto it = resolve_funcs_.begin(); it != resolve_funcs_.end() && !found; ++it)
@@ -149,15 +271,19 @@ namespace jsonschema {
                         {
                             auto base = loc.base();
                             anchor_uri_map_type anchor_dict2;
-                            this->save_schema(make_cross_draft_schema_validator(compilation_context<Json>(uri_wrapper(base.string().empty() ? loc : loc.base())), 
-                                external_sch, {}, anchor_dict2));
+                            // Compile it in the shared store if any
+                            compiling_shared_ = (shared_store_ != nullptr);
+                            auto external = make_cross_draft_schema_validator(compilation_context<Json>(uri_wrapper(base.string().empty() ? loc : loc.base())),
+                                external_sch, {}, anchor_dict2);
+                            this->save_schema(std::move(external));
+                            compiling_shared_ = false;
                             found = true;
                         }
                     }
                     if (found)
                     {
                         // Try resolving again
-                        if (schema_store_ptr_->find(loc) == schema_store_ptr_->end()) 
+                        if (!find_schema(loc, s, shared_only))
                         {
                             JSONCONS_THROW(jsonschema::schema_error("Unresolved reference '" + loc.string() + "'"));
                         }
@@ -168,32 +294,38 @@ namespace jsonschema {
                     }
                 }
             }
-
-            resolve_references();
-
-            return jsoncons::make_unique<document_schema_validator<Json>>(std::move(root_schema_), std::move(root_), std::move(schema_validators_));
         }
 
         void resolve_references()
         {
             for (auto& ref : unresolved_refs_)
             {
-                auto it = schema_store_ptr_->find(ref.first);
-                if (it == schema_store_ptr_->end())
+                schema_validator<Json>* s = nullptr;
+                if (!find_schema(ref.first, s, is_shared_ref(ref.second)))
                 {
                     JSONCONS_THROW(schema_error("Undefined reference " + ref.first.string()));
                 }
-                if ((*it).second == nullptr)
+                if (s == nullptr)
                 {
                     JSONCONS_THROW(schema_error("Null referred schema " + ref.first.string()));
                 }
-                ref.second->set_referred_schema((*it).second);
+                ref.second->set_referred_schema(s);
             }
         }
 
         void insert_schema(const uri_wrapper& identifier, schema_validator<Json>* s)
         {
-            this->schema_store_ptr_->emplace(identifier.uri(), s);
+            if (compiling_shared_)
+            {
+                if (shared_store_->schemas_.emplace(identifier.uri(), s).second)
+                {
+                    shared_inserted_.push_back(identifier.uri());
+                }
+            }
+            else
+            {
+                this->schema_store_ptr_->emplace(identifier.uri(), s);
+            }
         }
 
         void insert_unknown_keyword(const uri_wrapper& uri, 
@@ -232,11 +364,11 @@ namespace jsonschema {
 
         std::unique_ptr<ref_validator<Json>> get_or_create_reference(const Json& schema, const uri_wrapper& identifier)
         {
-            // a schema already exists
-            auto it = this->schema_store_ptr_->find(identifier.uri());
-            if (it != this->schema_store_ptr_->end())
+            // a schema already exists (only shared ones for a shared schema)
+            schema_validator<Json>* s = nullptr;
+            if (find_schema(identifier.uri(), s, compiling_shared_))
             {
-                return jsoncons::make_unique<ref_validator_type>(schema, identifier.uri(), (*it).second);
+                return jsoncons::make_unique<ref_validator_type>(schema, identifier.uri(), s);
             }
 
             // referencing an unknown keyword, turn it into schema
@@ -264,6 +396,10 @@ namespace jsonschema {
             auto orig = jsoncons::make_unique<ref_validator_type>(schema, identifier.uri());
 
             this->unresolved_refs_.emplace_back(identifier.uri(), orig.get());
+            if (compiling_shared_)
+            {
+                shared_refs_.insert(orig.get());
+            }
             return orig;
         }
 
