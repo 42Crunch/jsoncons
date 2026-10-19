@@ -109,6 +109,12 @@ TEST_CASE("jsonschema draft2019-09 tests")
         //jsonschema_tests("./jsonschema/issues/draft2019-09/issue-ref.json");
         //jsonschema_tests("./jsonschema/issues/draft2019-09/issue-recursiveRef.json");
     }
+    SECTION("more_tests")
+    {
+        // optional/refOfUnknownKeyword.json but the "reference internals of known non-applicator" case,
+        // plus references between schemas nested in unknown keywords
+        jsonschema_tests("./jsonschema/more_tests/draft2019-09/refOfUnknownKeyword.json");
+    }
 //#if 0
     SECTION("tests")
     {
