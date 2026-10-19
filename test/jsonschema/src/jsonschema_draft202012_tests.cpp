@@ -117,6 +117,10 @@ TEST_CASE("jsonschema draft2020-12 tests")
         //jsonschema_tests("./jsonschema/more_tests/draft2020-12/unevaluated-tests.json",
         //    jsonschema::evaluation_options{}.default_version(jsoncons::jsonschema::schema_version::draft202012()).
         //        compatibility_mode(true));
+
+        // optional/refOfUnknownKeyword.json but the "reference internals of known non-applicator" case,
+        // plus references between schemas nested in unknown keywords
+        jsonschema_tests("./jsonschema/more_tests/draft2020-12/refOfUnknownKeyword.json");
     }
     SECTION("tests")
     {

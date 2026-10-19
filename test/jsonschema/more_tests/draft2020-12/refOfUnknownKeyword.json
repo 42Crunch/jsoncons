@@ -1,0 +1,78 @@
+[
+    {
+        "description": "reference of a root arbitrary keyword ",
+        "schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "unknown-keyword": {"type": "integer"},
+            "properties": {
+                "bar": {"$ref": "#/unknown-keyword"}
+            }
+        },
+        "tests": [
+            {
+                "description": "match",
+                "data": {"bar": 3},
+                "valid": true
+            },
+            {
+                "description": "mismatch",
+                "data": {"bar": true},
+                "valid": false
+            }
+        ]
+    },
+    {
+        "description": "reference of an arbitrary keyword of a sub-schema",
+        "schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "properties": {
+                "foo": {"unknown-keyword": {"type": "integer"}},
+                "bar": {"$ref": "#/properties/foo/unknown-keyword"}
+            }
+        },
+        "tests": [
+            {
+                "description": "match",
+                "data": {"bar": 3},
+                "valid": true
+            },
+            {
+                "description": "mismatch",
+                "data": {"bar": true},
+                "valid": false
+            }
+        ]
+    },
+    {
+        "description": "references between schemas nested in arbitrary keywords (e.g. an OpenAPI document)",
+        "schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "components": {
+                "schemas": {
+                    "Pet": {
+                        "type": "object",
+                        "required": ["id"],
+                        "properties": {
+                            "id": {"$ref": "#/components/schemas/Id"},
+                            "parent": {"$ref": "#/components/schemas/Pet"}
+                        }
+                    },
+                    "Id": {"type": "integer", "minimum": 1}
+                }
+            },
+            "$ref": "#/components/schemas/Pet"
+        },
+        "tests": [
+            {
+                "description": "match",
+                "data": {"id": 1, "parent": {"id": 2}},
+                "valid": true
+            },
+            {
+                "description": "mismatch",
+                "data": {"id": 1, "parent": {"id": 0}},
+                "valid": false
+            }
+        ]
+    }
+]
