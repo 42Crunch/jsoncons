@@ -334,9 +334,12 @@ namespace jsonschema {
                                     const std::string& key, 
                                     const Json& value)
         {
-            auto new_u = uri.append(key);
-            uri_wrapper new_uri(new_u);
+            insert_unknown_location(uri.append(key), value);
+        }
 
+        // Save an unknown keyword (or a nested value of it) for later reference
+        void insert_unknown_location(const uri_wrapper& new_uri, const Json& value)
+        {
             if (new_uri.has_fragment() && !new_uri.has_plain_name_fragment()) 
             {
                 // is there a reference looking for this unknown-keyword, which is thus no longer a unknown keyword but a schema
@@ -361,6 +364,14 @@ namespace jsonschema {
                         for (const auto& subsch : value.object_range())
                         {
                             insert_unknown_keyword(new_uri, std::string(subsch.name()), subsch.value());
+                        }
+                    }
+                    else if (value.type() == json_type::array)
+                    {
+                        std::size_t index = 0;
+                        for (const auto& subsch : value.array_range())
+                        {
+                            insert_unknown_location(new_uri.append(index++), subsch);
                         }
                     }
                 }

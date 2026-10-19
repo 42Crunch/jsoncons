@@ -111,8 +111,7 @@ TEST_CASE("jsonschema draft2019-09 tests")
     }
     SECTION("more_tests")
     {
-        // optional/refOfUnknownKeyword.json but the "reference internals of known non-applicator" case,
-        // plus references between schemas nested in unknown keywords
+        // references between schemas nested in unknown keywords (e.g. an OpenAPI document)
         jsonschema_tests("./jsonschema/more_tests/draft2019-09/refOfUnknownKeyword.json");
     }
 //#if 0
@@ -183,6 +182,7 @@ TEST_CASE("jsonschema draft2019-09 tests")
 
         jsonschema_tests("./jsonschema/JSON-Schema-Test-Suite/tests/draft2019-09/uniqueItems.json"); 
         jsonschema_tests("./jsonschema/JSON-Schema-Test-Suite/tests/draft2019-09/vocabulary.json");
+        jsonschema_tests("./jsonschema/JSON-Schema-Test-Suite/tests/draft2019-09/optional/refOfUnknownKeyword.json");
         jsonschema_tests("./jsonschema/JSON-Schema-Test-Suite/tests/draft2020-12/optional/dependencies-compatibility.json",
             jsonschema::evaluation_options{}.default_version(jsoncons::jsonschema::schema_version::draft201909()).
                 compatibility_mode(true));
