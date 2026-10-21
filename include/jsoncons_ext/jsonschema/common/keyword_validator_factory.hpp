@@ -239,7 +239,7 @@ namespace jsonschema {
             const Json& sch, const Json& parent)
         {
             std::string keyword = "type";
-            uri schema_location = context.get_base_uri();
+            uri schema_location = context.make_schema_location(keyword);
             
             std::vector<json_schema_type> expected_types;
 
