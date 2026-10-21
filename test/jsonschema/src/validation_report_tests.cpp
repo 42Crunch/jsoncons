@@ -82,7 +82,7 @@ TEST_CASE("jsonschema validation report tests")
             {
                 "valid": false,
                 "evaluationPath": "/properties/multi/allOf/0/$ref/type",
-                "schemaLocation": "https://test.com/schema#/$defs/integer",
+                "schemaLocation": "https://test.com/schema#/$defs/integer/type",
                 "instanceLocation": "/multi",
                 "error": "Expected integer, found number"
             },
