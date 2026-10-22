@@ -148,9 +148,13 @@ namespace jsonschema {
 
             }
 
+            /* The subject's UTF-8 is checked (not PCRE2_NO_UTF_CHECK, undefined
+             * behaviour for an invalid one, which can come from any string not
+             * parsed from JSON), an invalid one doesn't match.
+             */
 #if defined(JSONCONS_JSONSCHEMA_HAS_PCRX)
 
-            if (pcrx_match_ex(&re_, PCRX(NO_UTF_CHECK),
+            if (pcrx_match_ex(&re_, 0,
                               subject.data(), subject.size(), 0,
                               NULL, 0) < 0) {
                 return false;
@@ -162,7 +166,7 @@ namespace jsonschema {
             match_data = pcre2_match_data_create_from_pattern(re_, NULL);
             JSONCONS_ASSERT(match_data != nullptr);
             int res = pcre2_match(re_, subject.data(), subject.size(), 0,
-                                  PCRE2_NO_UTF_CHECK, match_data, NULL);
+                                  0, match_data, NULL);
             pcre2_match_data_free(match_data);
             if (res < 0) {
                 return false;
