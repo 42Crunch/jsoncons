@@ -637,11 +637,11 @@ namespace jsonschema {
 
             eval_context<Json> this_context(context, this->keyword());
 
-            auto s = jsoncons::string_view(instance.as_cstring());
+            auto s = instance.as_string_view(); // the whole string, NUL(s) included
             if (!regex_.search(s))
             {
                 std::string message("String '");
-                message.append(instance.as_cstring());
+                message.append(s.data(), s.size());
                 message.append("' does not match pattern '");
                 message.append(pattern_string_);
                 message.append("'.");
