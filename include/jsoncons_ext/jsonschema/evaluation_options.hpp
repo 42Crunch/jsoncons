@@ -7,6 +7,7 @@
 #ifndef JSONCONS_EXT_JSONSCHEMA_EVALUATION_OPTIONS_HPP
 #define JSONCONS_EXT_JSONSCHEMA_EVALUATION_OPTIONS_HPP
 
+#include <functional>
 #include <string>
 
 namespace jsoncons {
@@ -48,6 +49,7 @@ namespace jsonschema {
         bool compatibility_mode_{false};
         std::string default_base_uri_;
         bool enable_custom_error_message_{false};
+        std::function<void(const std::string&)> warning_handler_;
     public:
         evaluation_options()
             : default_version_{schema_version::draft202012()}, 
@@ -106,6 +108,19 @@ namespace jsonschema {
         evaluation_options& enable_custom_error_message(bool value) 
         {
             enable_custom_error_message_ = value;
+            return *this;
+        }
+
+        // Called with a message for what the compilation ignores rather than fails on
+        // (e.g. a non-boolean OpenAPI "nullable"); none by default.
+        const std::function<void(const std::string&)>& warning_handler() const
+        {
+            return warning_handler_;
+        }
+
+        evaluation_options& warning_handler(std::function<void(const std::string&)> handler)
+        {
+            warning_handler_ = std::move(handler);
             return *this;
         }
 

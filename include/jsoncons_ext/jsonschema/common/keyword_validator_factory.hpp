@@ -284,14 +284,27 @@ namespace jsonschema {
                         message.append("'");
                         JSONCONS_THROW(schema_error(message));
                     }
-                    // XXX: Handle OpenAPI `nullable` keyword
+                    // OpenAPI's `nullable` (or `x-nullable`) adds null to a single type, the
+                    // other keywords still apply (the strict OAS 3.0.3 reading); a non-boolean
+                    // one is ignored (warned about) rather than failing the compilation.
                     if (type != "null") {
                         auto it = parent.find("nullable");
                         if (it == parent.object_range().end()) {
                             it = parent.find("x-nullable");
                         }
-                        if (it != parent.object_range().end() && (*it).value().as_bool()) {
-                            expected_types.push_back(json_schema_type::null);
+                        if (it != parent.object_range().end()) {
+                            if ((*it).value().is_bool()) {
+                                if ((*it).value().as_bool()) {
+                                    expected_types.push_back(json_schema_type::null);
+                                }
+                            }
+                            else if (factory_->options().warning_handler()) {
+                                std::string message{context.make_schema_location(std::string((*it).key())).string()};
+                                message.append(": \"");
+                                message.append((*it).key().data(), (*it).key().size());
+                                message.append("\" is not a boolean, ignored");
+                                factory_->options().warning_handler()(message);
+                            }
                         }
                     }
                     break;

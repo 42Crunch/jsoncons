@@ -196,6 +196,7 @@ add_executable(unit_tests
                jsonschema/src/jsonschema_draft7_tests.cpp
                jsonschema/src/jsonschema_keyword_tests.cpp
                jsonschema/src/jsonschema_type_constraints_tests.cpp
+               jsonschema/src/openapi_tests.cpp
                jsonschema/src/schema_version_tests.cpp
                jsonschema/src/shared_schema_store_tests.cpp
                jsonschema/src/validation_report_tests.cpp
