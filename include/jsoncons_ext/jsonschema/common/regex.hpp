@@ -61,10 +61,13 @@ namespace jsonschema {
         }
         basic_regex &operator=(basic_regex &&other)
         {
-            basic_regex tmp(std::move(re_)); // RAII destroyed
-            pattern_ = std::move(other.pattern_);
-            error_str_ = std::move(other.error_str_);
-            std::swap(re_, other.re_);
+            if (this != &other) {
+                basic_regex tmp(std::move(other));
+                std::swap(re_, tmp.re_); // ours destroyed with tmp
+                pattern_ = std::move(tmp.pattern_);
+                error_str_ = std::move(tmp.error_str_);
+                compiled_ = tmp.compiled_;
+            }
             return *this;
         }
 
@@ -108,18 +111,19 @@ namespace jsonschema {
             if (!pcrx_compile(&re_, pattern_.data(), pattern_.length(),
                                  PCRX(ALT_BSUX) | PCRX(UTF) | PCRX(DOTALL))) {
                 error_str_ = "error " + std::to_string(re_.error_code) + " at offset " + std::to_string(re_.error_offset);
+                compiled_ = -1;
                 return false;
             }
 
 #elif defined(JSONCONS_JSONSCHEMA_HAS_PCRE2)
 
             int err_code = 0;
-            size_t err_off = 0;
-            re_ = pcre2_compile(pattern, length,
-                                PCRE2_ALT_BSUX | PCRE2_UTF8 | PCRE2_DOTALL | PCRE2_DOLLAR_ENDONLY,
-                                &err_code, &err_offset, NULL);
+            PCRE2_SIZE err_off = 0;
+            re_ = pcre2_compile(reinterpret_cast<PCRE2_SPTR>(pattern_.data()), pattern_.length(),
+                                PCRE2_ALT_BSUX | PCRE2_UTF | PCRE2_DOTALL | PCRE2_DOLLAR_ENDONLY,
+                                &err_code, &err_off, NULL);
             if (!re_) {
-                error_str_ = "error " + std::to_string(err_code) " at offset " + std::to_string(err_off);
+                error_str_ = "error " + std::to_string(err_code) + " at offset " + std::to_string(err_off);
                 compiled_ = -1;
                 return false;
             }
@@ -165,7 +169,7 @@ namespace jsonschema {
             pcre2_match_data *match_data;
             match_data = pcre2_match_data_create_from_pattern(re_, NULL);
             JSONCONS_ASSERT(match_data != nullptr);
-            int res = pcre2_match(re_, subject.data(), subject.size(), 0,
+            int res = pcre2_match(re_, reinterpret_cast<PCRE2_SPTR>(subject.data()), subject.size(), 0,
                                   0, match_data, NULL);
             pcre2_match_data_free(match_data);
             if (res < 0) {
