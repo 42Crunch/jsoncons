@@ -605,6 +605,32 @@ namespace jsonschema {
 
     // pattern 
 
+    // A string instance quoted in a message, at most max_quoted bytes of it (cut on a UTF-8
+    // character boundary), then "…" and its size when longer: a huge string doesn't make a
+    // huge message.
+    constexpr std::size_t max_quoted_instance_length = 256;
+
+    inline void append_quoted_instance(std::string& message, jsoncons::string_view sv)
+    {
+        if (sv.size() <= max_quoted_instance_length)
+        {
+            message.push_back('\'');
+            message.append(sv.data(), sv.size());
+            message.push_back('\'');
+            return;
+        }
+        std::size_t n = max_quoted_instance_length;
+        while (n > 0 && (static_cast<unsigned char>(sv[n]) & 0xC0) == 0x80)
+        {
+            --n; // sv[n] continues a character: cut before the character
+        }
+        message.push_back('\'');
+        message.append(sv.data(), n);
+        message.append("\xE2\x80\xA6' (");
+        message.append(std::to_string(sv.size()));
+        message.append(" bytes)");
+    }
+
 #if defined(JSONCONS_JSONSCHEMA_HAS_REGEX)
     template <typename Json>
     class pattern_validator : public keyword_validator<Json>
@@ -640,9 +666,9 @@ namespace jsonschema {
             auto s = instance.as_string_view(); // the whole string, NUL(s) included
             if (!regex_.search(s))
             {
-                std::string message("String '");
-                message.append(s.data(), s.size());
-                message.append("' does not match pattern '");
+                std::string message("String ");
+                append_quoted_instance(message, s);
+                message.append(" does not match pattern '");
                 message.append(pattern_string_);
                 message.append("'.");
                 walk_state result = reporter.error(this->make_validation_message(

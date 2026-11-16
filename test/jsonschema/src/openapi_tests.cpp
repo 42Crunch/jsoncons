@@ -84,3 +84,39 @@ TEST_CASE("openapi nullable")
         CHECK(errors(compile(R"({"type": "string", "x-nullable": 1})"), R"("a")").empty());
     }
 }
+
+#if defined(JSONCONS_JSONSCHEMA_HAS_REGEX)
+TEST_CASE("pattern message")
+{
+    auto schema = compile(R"({"type": "string", "pattern": "^[a-z]*$"})");
+
+    SECTION("a short string is quoted whole")
+    {
+        auto e = errors(schema, R"("ABC")");
+        REQUIRE(e.size() == 1);
+        CHECK(e[0] == "String 'ABC' does not match pattern '^[a-z]*$'.");
+    }
+    SECTION("256 bytes at most, then its size")
+    {
+        std::string big(300000, 'A');
+        auto e = errors(schema, "\"" + big + "\"");
+        REQUIRE(e.size() == 1);
+        CHECK(e[0] == "String '" + std::string(256, 'A') + "\xE2\x80\xA6' (300000 bytes) does not match pattern '^[a-z]*$'.");
+
+        std::string exact(256, 'B');
+        e = errors(schema, "\"" + exact + "\"");
+        REQUIRE(e.size() == 1);
+        CHECK(e[0] == "String '" + exact + "' does not match pattern '^[a-z]*$'.");
+    }
+    SECTION("cut on a character boundary")
+    {
+        // 255 ASCII bytes then a 2-byte character across the 256th byte
+        std::string s(255, 'C');
+        s += "\xC3\xA9";
+        s += std::string(100, 'D');
+        auto e = errors(schema, "\"" + s + "\"");
+        REQUIRE(e.size() == 1);
+        CHECK(e[0] == "String '" + std::string(255, 'C') + "\xE2\x80\xA6' (357 bytes) does not match pattern '^[a-z]*$'.");
+    }
+}
+#endif
