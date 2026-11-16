@@ -120,3 +120,67 @@ TEST_CASE("pattern message")
     }
 }
 #endif
+
+namespace {
+
+    // The messages of a validation in a sense (all of them)
+    std::vector<std::string> errors(const jsonschema::json_schema<json>& schema, const std::string& instance,
+        jsonschema::validation_sense sense)
+    {
+        std::vector<std::string> messages;
+        auto reporter = [&](const jsonschema::validation_message& msg) -> jsonschema::walk_result
+        {
+            messages.push_back(msg.message());
+            return jsonschema::walk_result::advance;
+        };
+        schema.validate(json::parse(instance), reporter, sense);
+        return messages;
+    }
+
+} // namespace
+
+TEST_CASE("openapi readOnly and writeOnly")
+{
+    using jsonschema::validation_sense;
+    auto schema = compile(R"({
+        "type": "object",
+        "required": ["id", "name", "password"],
+        "properties": {
+            "id": {"type": "integer", "readOnly": true},
+            "name": {"type": "string"},
+            "password": {"type": "string", "writeOnly": true},
+            "nested": {
+                "type": "object",
+                "required": ["created"],
+                "properties": {"created": {"type": "string", "readOnly": true}}
+            }
+        }
+    })");
+
+    SECTION("a request (write): a readOnly property refused, not required")
+    {
+        CHECK(errors(schema, R"({"name": "a", "password": "p"})", validation_sense::write).empty());
+        auto e = errors(schema, R"({"id": 1, "name": "a", "password": "p"})", validation_sense::write);
+        REQUIRE(e.size() == 1);
+        CHECK(e[0] == "Property 'id' is readOnly, not allowed in a request.");
+        CHECK(errors(schema, R"({"name": "a", "password": "p", "nested": {}})", validation_sense::write).empty());
+        CHECK(errors(schema, R"({"name": "a", "password": "p", "nested": {"created": "x"}})",
+                     validation_sense::write).size() == 1);
+        // writeOnly is required in a request
+        CHECK(errors(schema, R"({"name": "a"})", validation_sense::write).size() == 1);
+    }
+    SECTION("a response (read): a writeOnly property refused, not required")
+    {
+        CHECK(errors(schema, R"({"id": 1, "name": "a"})", validation_sense::read).empty());
+        auto e = errors(schema, R"({"id": 1, "name": "a", "password": "p"})", validation_sense::read);
+        REQUIRE(e.size() == 1);
+        CHECK(e[0] == "Property 'password' is writeOnly, not allowed in a response.");
+        CHECK(errors(schema, R"({"name": "a"})", validation_sense::read).size() == 1);
+    }
+    SECTION("no sense: annotations only")
+    {
+        CHECK(errors(schema, R"({"id": 1, "name": "a", "password": "p"})", validation_sense::none).empty());
+        CHECK(errors(schema, R"({"id": 1, "name": "a", "password": "p"})").empty());
+        CHECK(errors(schema, R"({"name": "a"})").size() == 2);
+    }
+}

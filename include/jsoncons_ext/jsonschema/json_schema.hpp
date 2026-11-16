@@ -257,6 +257,21 @@ public:
         root_->validate(context, instance, instance_location, results, adaptor, patch);
     }
 
+    // Validate input JSON against a JSON Schema with a provided error reporter, the data's
+    // direction (OpenAPI readOnly/writeOnly) given
+    template <typename Reporter>
+    typename std::enable_if<nonstd::is_function_object_exact<Reporter,walk_state,validation_message>::value,void>::type
+    validate(const Json& instance, Reporter&& reporter, validation_sense sense) const
+    {
+        jsonpointer::json_pointer instance_location{};
+        jsoncons::optional<Json> patch;
+
+        error_reporter_adaptor<Json,Reporter> adaptor(std::forward<Reporter>(reporter));
+        eval_context<Json> context{sense};
+        evaluation_results results;
+        root_->validate(context, instance, instance_location, results, adaptor, patch);
+    }
+
     // Validate input JSON against a JSON Schema with a provided error reporter
     template <typename Reporter>
     typename std::enable_if<nonstd::is_function_object_exact<Reporter,walk_state,validation_message>::value,void>::type

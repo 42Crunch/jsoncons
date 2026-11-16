@@ -24,6 +24,11 @@ class schema_validator;
 
 enum class evaluation_flags : unsigned {require_evaluated_properties=1, require_evaluated_items=2};
 
+// OpenAPI: the direction of the validated data, for readOnly and writeOnly properties: a
+// request's (write) refuses a readOnly property and doesn't require a missing one, a
+// response's (read) likewise for writeOnly; none (the default) ignores them.
+enum class validation_sense {none, read, write};
+
 JSONCONS_ATTRIBUTE_NODISCARD
 constexpr evaluation_flags
 operator|(evaluation_flags lhs, evaluation_flags rhs) noexcept
@@ -63,27 +68,36 @@ private:
     std::vector<const schema_validator<Json>*> dynamic_scope_;
     jsonpointer::json_pointer eval_path_;
     evaluation_flags flags_;
+    validation_sense sense_{validation_sense::none};
 public:
     eval_context()
         : flags_{}
     {
     }
 
+    explicit eval_context(validation_sense sense)
+        : flags_{}, sense_{sense}
+    {
+    }
+
     eval_context(const eval_context& other)
         : dynamic_scope_ { other.dynamic_scope_}, eval_path_{other.eval_path_},
-          flags_(other.flags_)
+          flags_(other.flags_),
+          sense_(other.sense_)
     {
     }
 
     eval_context(eval_context&& other) noexcept
         : dynamic_scope_{std::move(other.dynamic_scope_)},eval_path_{std::move(other.eval_path_)},
-          flags_(other.flags_)
+          flags_(other.flags_),
+          sense_(other.sense_)
     {
     }
 
     eval_context(const eval_context& parent, const schema_validator<Json> *validator)
         : dynamic_scope_ { parent.dynamic_scope_ }, eval_path_{ parent.eval_path_ },
-          flags_(parent.flags_)
+          flags_(parent.flags_),
+          sense_(parent.sense_)
     {
         if (validator->id() || dynamic_scope_.empty())
         {
@@ -94,7 +108,8 @@ public:
     eval_context(const eval_context& parent, const schema_validator<Json> *validator,
         evaluation_flags flags)
         : dynamic_scope_ { parent.dynamic_scope_ }, eval_path_{ parent.eval_path_ },
-          flags_(flags)
+          flags_(flags),
+          sense_(parent.sense_)
     {
         if (validator->id() || dynamic_scope_.empty())
         {
@@ -104,7 +119,8 @@ public:
 
     eval_context(const eval_context& parent, jsoncons::string_view name)
         : dynamic_scope_{parent.dynamic_scope_}, eval_path_(parent.eval_path() / name),
-          flags_(parent.flags_)
+          flags_(parent.flags_),
+          sense_(parent.sense_)
           
     {
     }
@@ -112,20 +128,23 @@ public:
     eval_context(const eval_context& parent, jsoncons::string_view name,
         evaluation_flags flags)
         : dynamic_scope_{parent.dynamic_scope_}, eval_path_(parent.eval_path() / name),
-          flags_(flags)
+          flags_(flags),
+          sense_(parent.sense_)
     {
     }
 
     eval_context(const eval_context& parent, std::size_t index)
         : dynamic_scope_{parent.dynamic_scope_}, eval_path_(parent.eval_path() / index),
-          flags_(parent.flags_)
+          flags_(parent.flags_),
+          sense_(parent.sense_)
     {
     }
 
     eval_context(const eval_context& parent, std::size_t index,
         evaluation_flags flags)
         : dynamic_scope_{parent.dynamic_scope_}, eval_path_(parent.eval_path() / index),
-          flags_(flags)
+          flags_(flags),
+          sense_(parent.sense_)
     {
     }
 
@@ -152,6 +171,11 @@ public:
     bool require_evaluated_items() const
     {
         return (flags_ & evaluation_flags::require_evaluated_items) == evaluation_flags::require_evaluated_items;
+    }
+
+    validation_sense sense() const
+    {
+        return sense_;
     }
 }; 
 

@@ -603,6 +603,63 @@ namespace jsonschema {
         }
     };
 
+    // OpenAPI: the readOnly and writeOnly properties of a schema (its "properties" whose own
+    // schema says so: a property's $ref target isn't looked at), for a validation's sense
+    class read_write_only_properties
+    {
+        std::unordered_set<std::string> read_only_, write_only_;
+
+    public:
+        read_write_only_properties() = default;
+
+        template <typename Json>
+        explicit read_write_only_properties(const Json& schema)
+        {
+            if (!schema.is_object())
+            {
+                return;
+            }
+            auto it = schema.find("properties");
+            if (it == schema.object_range().end() || !(*it).value().is_object())
+            {
+                return;
+            }
+            for (const auto& prop : (*it).value().object_range())
+            {
+                const Json& sch = prop.value();
+                if (!sch.is_object())
+                {
+                    continue;
+                }
+                auto ro = sch.find("readOnly"), wo = sch.find("writeOnly");
+                if (ro != sch.object_range().end() && (*ro).value().is_bool() && (*ro).value().as_bool())
+                {
+                    read_only_.emplace(prop.key());
+                }
+                if (wo != sch.object_range().end() && (*wo).value().is_bool() && (*wo).value().as_bool())
+                {
+                    write_only_.emplace(prop.key());
+                }
+            }
+        }
+
+        // The property can't be sent in this sense (readOnly in a request, writeOnly in a
+        // response), so it's refused when present and not required (name: a key, of any
+        // allocator's string)
+        bool excluded(validation_sense sense, jsoncons::string_view name) const
+        {
+            switch (sense)
+            {
+                case validation_sense::write:
+                    return !read_only_.empty() && read_only_.find(std::string(name.data(), name.size())) != read_only_.end();
+                case validation_sense::read:
+                    return !write_only_.empty() && write_only_.find(std::string(name.data(), name.size())) != write_only_.end();
+                default:
+                    return false;
+            }
+        }
+    };
+
     // pattern 
 
     // A string instance quoted in a message, at most max_quoted bytes of it (cut on a UTF-8
@@ -1989,11 +2046,13 @@ namespace jsonschema {
         using keyword_validator_ptr_type = std::unique_ptr<keyword_validator<Json>>;
 
         std::vector<std::string> items_;
+        read_write_only_properties read_write_only_;
 
     public:
         required_validator(const Json& schema, const uri& schema_location, const std::string& custom_message,
             const std::vector<std::string>& items)
-            : keyword_validator<Json>("required", schema, schema_location, custom_message), items_(items)
+            : keyword_validator<Json>("required", schema, schema_location, custom_message), items_(items),
+              read_write_only_(schema)
         {
         }
 
@@ -2019,7 +2078,7 @@ namespace jsonschema {
 
             for (const auto& key : items_)
             {
-                if(instance.find(key) == instance.object_range().end())
+                if(instance.find(key) == instance.object_range().end() && !read_write_only_.excluded(context.sense(), key))
                 {
                     walk_state result = reporter.error(this->make_validation_message(
                         this_context.eval_path(),
@@ -2577,6 +2636,7 @@ namespace jsonschema {
         using schema_validator_ptr_type = typename schema_validator<Json>::schema_validator_ptr_type;
 
         std::map<std::string, schema_validator_ptr_type,transparent_string_less<std::string>> properties_;
+        read_write_only_properties read_write_only_;
     public:
         properties_validator(const properties_validator&) = delete;
         properties_validator& operator=(const properties_validator&) = delete;
@@ -2586,7 +2646,7 @@ namespace jsonschema {
         properties_validator(const Json& schema, const uri& schema_location, const std::string& custom_message,
             std::map<std::string, schema_validator_ptr_type,transparent_string_less<std::string>>&& properties)
             : keyword_validator<Json>("properties", schema, std::move(schema_location), custom_message),
-              properties_(std::move(properties))
+              properties_(std::move(properties)), read_write_only_(schema)
         {
         }
 
@@ -2623,6 +2683,22 @@ namespace jsonschema {
                     jsonpointer::json_pointer prop_location = instance_location / prop.key();
 
                     std::size_t errors = reporter.error_count();
+                    if (read_write_only_.excluded(context.sense(), prop.key()))
+                    {
+                        bool write = context.sense() == validation_sense::write;
+                        std::string message{"Property '"};
+                        message.append(prop.key().c_str());
+                        message.append(write ? "' is readOnly, not allowed in a request."
+                                             : "' is writeOnly, not allowed in a response.");
+                        walk_state result = reporter.error(this->make_validation_message(
+                            prop_context.eval_path(),
+                            prop_location,
+                            std::move(message)), patch);
+                        if (result == walk_state::abort)
+                        {
+                            return result;
+                        }
+                    }
                     walk_state result = (*prop_it).second->validate(prop_context, prop.value(), prop_location, results, reporter, patch);
                     if (result == walk_state::abort)
                     {
